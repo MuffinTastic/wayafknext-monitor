@@ -1,0 +1,53 @@
+name: Rust
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        platform:
+          - name: x86_64
+            cross: false
+            cmd: cargo
+            target: x86_64-unknown-linux-gnu
+          - name: aarch64
+            cross: true
+            cmd: cross
+            target: aarch64-unknown-linux-gnu
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install cross
+      if: ${{ matrix.platform.cross }}
+      run: cargo install cross
+
+    - name: Run release tests
+      run: ${{ matrix.platform.cmd }} test --verbose --target ${{ matrix.platform.target }} --release
+
+    - name: Build release binary
+      run: ${{ matrix.platform.cmd }} build --verbose --target ${{ matrix.platform.target }} --release
+
+    - name: Rename binary according to target
+      run: |
+        mkdir -p target/release
+        cp target/${{ matrix.platform.target }}/release/wayafknext-monitor target/release/wayafknext-monitor.${{ matrix.platform.name }}
+
+    - name: Create GitHub Release
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.ref_name }}
+        name: Release ${{ github.ref_name }}
+        files: target/release/wayafknext-monitor.${{ matrix.platform.name }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
