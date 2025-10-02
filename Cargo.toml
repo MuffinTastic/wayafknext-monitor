@@ -7,6 +7,9 @@ authors = ["MuffinTastic <contact@muffintastic.dev>"]
 [dependencies]
 anyhow = "1.0.100"
 lazy_static = "1.5.0"
+tokio = "1.47.1"
+tokio-util = "0.7.16"
 uzers = "0.12.1"
 wayland-client = "0.31.11"
 wayland-protocols = { version = "0.32.9", features = ["client", "staging"] }
+wayland-protocols-async = { git = "https://github.com/mecha-org/wayland-protocols-async" }
