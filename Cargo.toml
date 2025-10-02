@@ -8,3 +8,8 @@ authors = ["MuffinTastic <contact@muffintastic.dev>"]
 linker = "aarch64-linux-gnu-gcc"
 
 [dependencies]
+anyhow = "1.0.100"
+lazy_static = "1.5.0"
+uzers = "0.12.1"
+wayland-client = "0.31.11"
+wayland-protocols = { version = "0.32.9", features = ["client", "staging"] }

@@ -15,18 +15,10 @@ use wayland_protocols::ext::idle_notify::v1::client::ext_idle_notification_v1::{
 };
 use wayland_protocols::ext::idle_notify::v1::client::ext_idle_notifier_v1::ExtIdleNotifierV1;
 
-struct IdleState {
-    idle_since: Option<std::time::Instant>,
-}
-
-impl IdleState {
-    fn new() -> Self {
-        Self { idle_since: None }
-    }
-}
+use crate::idle_detection::IdleEvent as WayIdleEvent;
 
 lazy_static::lazy_static! {
-    static ref IDLE_STATE: Arc<Mutex<IdleState>> = Arc::new(Mutex::new(IdleState::new()));
+    static ref IDLE_SIGNAL: Arc<Mutex<Option<Sender<WayIdleEvent>>>> = Arc::new(Mutex::new(None));
     static ref WAYLAND_INITIALIZED: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
     static ref MONITOR_RUNNING: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
     static ref STOP_SIGNAL: Arc<Mutex<Option<Sender<()>>>> = Arc::new(Mutex::new(None));
@@ -37,13 +29,13 @@ enum IdleManager {
 }
 
 struct WaylandState {
-    idle_state: Arc<Mutex<IdleState>>,
+    idle_state: Arc<Mutex<Option<Sender<WayIdleEvent>>>>,
     seats: HashMap<u32, WlSeat>,
     idle_manager: Option<IdleManager>,
 }
 
 impl WaylandState {
-    fn new(idle_state: Arc<Mutex<IdleState>>) -> Self {
+    fn new(idle_state: Arc<Mutex<Option<Sender<WayIdleEvent>>>>) -> Self {
         Self {
             idle_state,
             seats: HashMap::new(),
@@ -118,12 +110,16 @@ impl Dispatch<ExtIdleNotificationV1, u32> for WaylandState {
         match event {
             ext_idle_notification_v1::Event::Idled => {
                 if let Ok(mut state) = state.idle_state.lock() {
-                    state.idle_since = Some(std::time::Instant::now());
+                    if let Some(sender) = state.as_mut() {
+                        sender.send(WayIdleEvent::Idled);
+                    }
                 }
             }
             ext_idle_notification_v1::Event::Resumed => {
                 if let Ok(mut state) = state.idle_state.lock() {
-                    state.idle_since = None;
+                    if let Some(sender) = state.as_mut() {
+                        sender.send(WayIdleEvent::Resumed);
+                    }
                 }
             }
             _ => {}
@@ -154,15 +150,24 @@ impl Dispatch<ExtIdleNotifierV1, ()> for WaylandState {
     }
 }
 
-fn run_wayland_monitor(rx: Receiver<()>) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let conn = Connection::connect_to_env()?;
+pub fn set_signal_sender(idle_signal: Sender<WayIdleEvent>) {
+    if let Ok(mut state) = IDLE_SIGNAL.lock() {
+        *state = Some(idle_signal);
+    }
+}
+
+fn run_wayland_monitor(
+    conn: Connection,
+    timeout: u32,
+    rx: Receiver<()>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut event_queue = conn.new_event_queue();
     let qh = event_queue.handle();
 
     let display = conn.display();
     display.get_registry(&qh, ());
 
-    let state = WaylandState::new(IDLE_STATE.clone());
+    let state = WaylandState::new(IDLE_SIGNAL.clone());
     let mut state = state;
 
     loop {
@@ -181,11 +186,13 @@ fn run_wayland_monitor(rx: Receiver<()>) -> Result<(), Box<dyn std::error::Error
     Ok(())
 }
 
-pub fn initialize_wayland() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub fn start_idle_monitor(timeout: u32) -> anyhow::Result<()> {
     if let Ok(mut initialized) = WAYLAND_INITIALIZED.lock() {
         if *initialized {
             return Ok(());
         }
+
+        let conn = Connection::connect_to_env()?;
 
         MONITOR_RUNNING.store(true, Ordering::SeqCst);
 
@@ -196,61 +203,14 @@ pub fn initialize_wayland() -> Result<(), Box<dyn std::error::Error + Send + Syn
         }
 
         thread::spawn(move || {
-            if let Err(e) = run_wayland_monitor(rx) {
+            if let Err(e) = run_wayland_monitor(conn, timeout, rx) {
                 eprintln!("Wayland monitor error: {}", e);
             }
         });
 
         *initialized = true;
     }
-    Ok(())
-}
 
-pub fn get_idle_time() -> u64 {
-    if !MONITOR_RUNNING.load(Ordering::SeqCst) {
-        return 0;
-    }
-
-    if let Ok(state) = IDLE_STATE.lock() {
-        if let Some(idle_since) = state.idle_since {
-            idle_since.elapsed().as_secs()
-        } else {
-            0
-        }
-    } else {
-        0
-    }
-}
-
-#[expect(dead_code)]
-pub fn start_idle_monitor() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // Stop any existing monitor and wait for confirmation
-    stop_idle_monitor();
-
-    // Reset idle state
-    if let Ok(mut state) = IDLE_STATE.lock() {
-        state.idle_since = None;
-    }
-
-    if let Ok(mut initialized) = WAYLAND_INITIALIZED.lock() {
-        if !*initialized {
-            MONITOR_RUNNING.store(true, Ordering::SeqCst);
-
-            // Create a channel for stop signaling
-            let (tx, rx) = channel();
-            if let Ok(mut stop_signal) = STOP_SIGNAL.lock() {
-                *stop_signal = Some(tx);
-            }
-
-            thread::spawn(move || {
-                if let Err(e) = run_wayland_monitor(rx) {
-                    eprintln!("Wayland monitor error: {}", e);
-                }
-            });
-
-            *initialized = true;
-        }
-    }
     Ok(())
 }
 
@@ -265,8 +225,8 @@ pub fn stop_idle_monitor() {
     }
 
     // Reset idle state
-    if let Ok(mut state) = IDLE_STATE.lock() {
-        state.idle_since = None;
+    if let Ok(mut state) = IDLE_SIGNAL.lock() {
+        *state = None;
     }
 
     // Reset initialized state
