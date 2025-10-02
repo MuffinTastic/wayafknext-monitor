@@ -4,6 +4,9 @@ version = "0.1.1"
 edition = "2024"
 authors = ["MuffinTastic <contact@muffintastic.dev>"]
 
+[profile.release]
+opt-level = "s"
+
 [dependencies]
 anyhow = "1.0.100"
 futures-util = "0.3.31"
