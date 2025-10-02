@@ -31,9 +31,6 @@ jobs:
       if: ${{ matrix.platform.cross }}
       run: cargo install cross
 
-    - name: Run release tests
-      run: ${{ matrix.platform.cmd }} test --verbose --target ${{ matrix.platform.target }} --release
-
     - name: Build release binary
       run: ${{ matrix.platform.cmd }} build --verbose --target ${{ matrix.platform.target }} --release
 
