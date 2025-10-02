@@ -28,7 +28,7 @@ pub fn print_status(status: Status) {
 #[tokio::main]
 async fn main() {
     if !util::is_wayland() {
-        println!("ERR Not running on Wayland!");
+        print_status(Status::Error("Not running on Wayland!".to_owned()));
         process::exit(1);
     }
 
