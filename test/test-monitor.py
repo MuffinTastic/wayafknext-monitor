@@ -5,6 +5,18 @@ import threading
 
 SOCKET_PATH = "target/debug/wayafknext.sock"
 
+# ClientInput (client-to-server)
+#  {"Quit":null}\n
+#  {"StartWatch":[2,3]}\n
+#  {"StopWatch":null}\n
+# Broadcast (server-to-client)
+#  {"WatchEvent":{"StatusIdle":true}}\n
+#  {"WatchEvent":{"StatusIdle":false}}\n
+#  {"WatchEvent":{"NotifsIdle":true}}\n
+#  {"WatchEvent":{"NotifsIdle":false}}\n
+#  {"WatchStarted":[2,3]}\n
+#  {"WatchStopped":null}\n
+
 def recv_loop(sock):
     buffer = ""
     while True:
