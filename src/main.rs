@@ -96,8 +96,8 @@ async fn main() -> anyhow::Result<()> {
                         main_token.cancel();
                     }
                     ClientEvent::Input(ClientInput::StartWatch(status_mins, notifs_mins)) => {
-                        let status_timeout = Duration::from_secs(status_mins);
-                        let notifs_timeout = Duration::from_secs(notifs_mins);
+                        let status_timeout = Duration::from_secs(status_mins * 60);
+                        let notifs_timeout = Duration::from_secs(notifs_mins * 60);
 
                         let monitor_tx = monitor_tx.clone();
 
