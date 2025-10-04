@@ -1,4 +1,7 @@
-use std::{env, path::Path};
+use std::{
+    env, io,
+    path::{Path, PathBuf},
+};
 
 use uzers::get_current_uid;
 
@@ -18,4 +21,13 @@ pub fn is_mutter() -> bool {
         return true;
     }
     false
+}
+
+pub fn get_exe_dir() -> io::Result<PathBuf> {
+    let exe_path = env::current_exe()?;
+    let exe_dir = exe_path.parent().ok_or(io::Error::new(
+        io::ErrorKind::Other,
+        "Couldn't get executable directory",
+    ))?;
+    Ok(exe_dir.to_owned())
 }

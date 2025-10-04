@@ -1,79 +1,60 @@
-import subprocess
+import socket
 import json
-import sys
 import time
+import threading
 
-def run_test(child_cmd):
-    # start the child process
-    proc = subprocess.Popen(
-        child_cmd,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        bufsize=1  # line-buffered
-    )
+SOCKET_PATH = "target/debug/wayafknext.sock"
 
-    def send(line: str):
-        print(f">>> {line.strip()}")
-        proc.stdin.write(line + "\n")
-        proc.stdin.flush()
-
-    def read_json():
-        line = proc.stdout.readline()
-        if not line:
-            return None
-        line = line.strip()
-        print(f"<<< {line}")
+def recv_loop(sock):
+    buffer = ""
+    while True:
         try:
-            return json.loads(line)
-        except json.JSONDecodeError:
-            return {"Error": f"Invalid JSON: {line}"}
-
-    # send "1" to create a watch with a 1 minute duration
-    send("1")
-    msg = read_json()
-    if msg and "Error" in msg:
-        print("Child reported error:", msg["Error"])
-        proc.terminate()
-        return
-
-    # print back the status message to the user
-    print("Status:", msg)
-
-    # wait for {"Idle": true}
-    while True:
-        msg = read_json()
-        if msg is None:
-            break
-        if "Error" in msg:
-            print("Child reported error:", msg["Error"])
-            break
-        if msg.get("Idle") is True:
-            print("Got Idle:true")
+            data = sock.recv(4096)
+            if not data:
+                print("Server closed connection.")
+                break
+            buffer += data.decode("utf-8")
+            while "\n" in buffer:
+                line, buffer = buffer.split("\n", 1)
+                if line.strip():
+                    try:
+                        message = json.loads(line)
+                        print("Broadcast:", message)
+                    except json.JSONDecodeError:
+                        print("Invalid JSON from server:", line)
+        except Exception as e:
+            print("Receive error:", e)
             break
 
-    # wait for {"Idle": false}
-    while True:
-        msg = read_json()
-        if msg is None:
-            break
-        if "Error" in msg:
-            print("Child reported error:", msg["Error"])
-            break
-        if msg.get("Idle") is False:
-            print("Got Idle:false")
-            break
 
-    # stop the watch
-    send("stop")
-    msg = read_json()
-    print("Status:", msg)
+def send_json(sock, payload):
+    msg = json.dumps(payload) + "\n"
+    sock.sendall(msg.encode("utf-8"))
+    print("Sent:", payload)
 
-    # quit the child process and exit
-    send("quit")
-    proc.wait(timeout=5)
-    print("Child process exited.")
+
+def main():
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.connect(SOCKET_PATH)
+    print(f"Connected to {SOCKET_PATH}")
+
+    threading.Thread(target=recv_loop, args=(sock,), daemon=True).start()
+
+    try:
+        send_json(sock, {"StartWatch": [2, 3]})
+        time.sleep(30)
+        send_json(sock, {"StopWatch": None})
+        time.sleep(2)
+        send_json(sock, {"StartWatch": [5, 2]})
+        time.sleep(30)
+        send_json(sock, {"StopWatch": None})
+        time.sleep(1)
+        send_json(sock, {"Quit": None})
+        time.sleep(1)
+    finally:
+        sock.close()
+        print("Connection closed.")
+
 
 if __name__ == "__main__":
-    run_test("target/debug/wayafknext-monitor")
+    main()
