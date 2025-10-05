@@ -68,7 +68,9 @@ async fn main() -> anyhow::Result<()> {
     let (monitor_tx, mut monitor_rx) = mpsc::channel(8);
     let (broadcast_tx, broadcast_rx) = broadcast::channel(8);
 
+    // start off with a cancelled token to indicate that nothing is running
     let mut monitor_token = CancellationToken::new();
+    monitor_token.cancel();
 
     println!("Listening for clients");
 
@@ -121,9 +123,11 @@ async fn main() -> anyhow::Result<()> {
                         broadcast_tx.send(Broadcast::WatchStarted(status_mins, notifs_mins)).unwrap();
                     }
                     ClientEvent::Input(ClientInput::StopWatch(())) => {
-                        println!("Stopped watch");
-                        monitor_token.cancel();
-                        broadcast_tx.send(Broadcast::WatchStopped(())).unwrap();
+                        if !monitor_token.is_cancelled() {
+                            println!("Stopped watch");
+                            monitor_token.cancel();
+                            broadcast_tx.send(Broadcast::WatchStopped(())).unwrap();
+                        }
                     }
                     ClientEvent::Error(err_box) => {
                         eprintln!("Client errored: {:?}", *err_box);
