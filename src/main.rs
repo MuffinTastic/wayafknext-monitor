@@ -98,6 +98,12 @@ async fn main() -> anyhow::Result<()> {
                         main_token.cancel();
                     }
                     ClientEvent::Input(ClientInput::StartWatch(status_mins, notifs_mins)) => {
+                        if !monitor_token.is_cancelled() {
+                            println!("Stopped old watch");
+                            monitor_token.cancel();
+                            broadcast_tx.send(Broadcast::WatchStopped(())).unwrap();
+                        }
+
                         let status_timeout = Duration::from_secs(status_mins * 60);
                         let notifs_timeout = Duration::from_secs(notifs_mins * 60);
 
