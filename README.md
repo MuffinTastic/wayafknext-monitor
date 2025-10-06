@@ -9,15 +9,11 @@ It opens a UNIX socket in the same directory as the executable. Communication is
 
 Client-to-server:
  - `{"Quit":null}\n`
- - `{"StartWatch":[S,N]}\n`
+ - `{"StartWatch":{"status_mins": number, "notifs_mins": number}}\n`
  - `{"StopWatch":null}\n`
 
 Server-to-client:
- - `{"WatchEvent":{"StatusIdle":<bool>}}\n`
- - `{"WatchEvent":{"NotifsIdle":<bool>}}\n`
- - `{"WatchStarted":[S,N]}\n`
+ - `{"WatchEvent":{"StatusIdle": boolean}}\n`
+ - `{"WatchEvent":{"NotifsIdle": boolean}}\n`
+ - `{"WatchStarted":{"status_mins": number, "notifs_mins": number}}\n`
  - `{"WatchStopped":null}\n`
-
-... where
- - `S` = status idle timeout in minutes (integer)
- - `N` = notifications idle timeout in minutes (integer)

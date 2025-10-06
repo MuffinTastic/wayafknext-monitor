@@ -7,14 +7,12 @@ SOCKET_PATH = "target/debug/wayafknext.sock"
 
 # ClientInput (client-to-server)
 #  {"Quit":null}\n
-#  {"StartWatch":[2,3]}\n
+#  {"StartWatch":{"status_mins": number, "notifs_mins": number}}\n
 #  {"StopWatch":null}\n
 # Broadcast (server-to-client)
-#  {"WatchEvent":{"StatusIdle":true}}\n
-#  {"WatchEvent":{"StatusIdle":false}}\n
-#  {"WatchEvent":{"NotifsIdle":true}}\n
-#  {"WatchEvent":{"NotifsIdle":false}}\n
-#  {"WatchStarted":[2,3]}\n
+#  {"WatchEvent":{"StatusIdle": boolean}}\n
+#  {"WatchEvent":{"NotifsIdle": boolean}}\n
+#  {"WatchStarted":{"status_mins": number, "notifs_mins": number}}\n
 #  {"WatchStopped":null}\n
 
 def recv_loop(sock):
@@ -53,11 +51,11 @@ def main():
     threading.Thread(target=recv_loop, args=(sock,), daemon=True).start()
 
     try:
-        send_json(sock, {"StartWatch":  { "status_mins": 2, "notifs_mins": 3 }})
+        send_json(sock, {"StartWatch": { "status_mins": 2, "notifs_mins": 3 }})
         time.sleep(30)
         send_json(sock, {"StopWatch": None})
         time.sleep(2)
-        send_json(sock, {"StartWatch":  { "status_mins": 5, "notifs_mins": 2 }})
+        send_json(sock, {"StartWatch": { "status_mins": 5, "notifs_mins": 2 }})
         time.sleep(30)
         send_json(sock, {"StopWatch": None})
         time.sleep(1)
