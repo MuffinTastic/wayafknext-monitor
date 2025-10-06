@@ -38,7 +38,7 @@ pub async fn start_monitor(
         'translate: loop {
             tokio::select! {
                 _ = translate_token.cancelled() => {
-                    let _ = handler_join.await.unwrap();
+                    handler_join.await.unwrap();
                     break 'translate;
                 }
                 Some(evt) = handler_rx.recv() => {

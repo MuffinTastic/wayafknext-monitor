@@ -183,8 +183,8 @@ async fn handle_client(
             broadcast_res = broadcast_rx.recv() => {
                 let broadcast = broadcast_res?;
                 let json = serde_json::to_string(&broadcast)?;
-                writer.write(json.as_bytes()).await?;
-                writer.write(b"\n").await?;
+                writer.write_all(json.as_bytes()).await?;
+                writer.write_all(b"\n").await?;
             }
             read_res = lines.next_line() => {
                 if let Some(line) = read_res? {

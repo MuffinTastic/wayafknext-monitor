@@ -65,12 +65,12 @@ pub async fn start_monitor(
 
                     if watch_id == status_resume_watch {
                         sender.send(MonitorEvent::WatchEvent(WatchEvent::StatusIdle(false))).await?;
-                        status_resume_watch = 0
+                        status_resume_watch = 0;
                     }
 
                     if watch_id == notifs_resume_watch {
                         sender.send(MonitorEvent::WatchEvent(WatchEvent::NotifsIdle(false))).await?;
-                        notifs_resume_watch = 0
+                        notifs_resume_watch = 0;
                     }
                 }
             }
