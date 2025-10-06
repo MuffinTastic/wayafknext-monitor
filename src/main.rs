@@ -20,14 +20,14 @@ use crate::monitor::MonitorEvent;
 #[derive(Debug, Clone, serde::Serialize)]
 pub enum Broadcast {
     WatchEvent(monitor::WatchEvent),
-    WatchStarted(u64, u64),
+    WatchStarted { status_mins: u64, notifs_mins: u64 },
     WatchStopped(()),
 }
 
 #[derive(Debug, serde::Deserialize)]
 pub enum ClientInput {
     Quit(()),
-    StartWatch(u64, u64),
+    StartWatch { status_mins: u64, notifs_mins: u64 },
     StopWatch(()),
 }
 
@@ -97,7 +97,7 @@ async fn main() -> anyhow::Result<()> {
                         println!("Quit requested");
                         main_token.cancel();
                     }
-                    ClientEvent::Input(ClientInput::StartWatch(status_mins, notifs_mins)) => {
+                    ClientEvent::Input(ClientInput::StartWatch { status_mins, notifs_mins }) => {
                         if !monitor_token.is_cancelled() {
                             println!("Stopped old watch");
                             monitor_token.cancel();
@@ -126,7 +126,7 @@ async fn main() -> anyhow::Result<()> {
                         });
 
                         println!("Started watch: {status_mins} mins, {notifs_mins} mins");
-                        broadcast_tx.send(Broadcast::WatchStarted(status_mins, notifs_mins)).unwrap();
+                        broadcast_tx.send(Broadcast::WatchStarted { status_mins, notifs_mins } ).unwrap();
                     }
                     ClientEvent::Input(ClientInput::StopWatch(())) => {
                         if !monitor_token.is_cancelled() {

@@ -53,11 +53,11 @@ def main():
     threading.Thread(target=recv_loop, args=(sock,), daemon=True).start()
 
     try:
-        send_json(sock, {"StartWatch": [2, 3]})
+        send_json(sock, {"StartWatch":  { "status_mins": 2, "notifs_mins": 3 }})
         time.sleep(30)
         send_json(sock, {"StopWatch": None})
         time.sleep(2)
-        send_json(sock, {"StartWatch": [5, 2]})
+        send_json(sock, {"StartWatch":  { "status_mins": 5, "notifs_mins": 2 }})
         time.sleep(30)
         send_json(sock, {"StopWatch": None})
         time.sleep(1)
