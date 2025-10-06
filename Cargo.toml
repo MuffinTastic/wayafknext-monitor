@@ -6,6 +6,7 @@ authors = ["MuffinTastic <contact@muffintastic.dev>"]
 
 [profile.release]
 opt-level = "s"
+panic = "abort"
 
 [dependencies]
 anyhow = "1.0.100"
