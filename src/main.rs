@@ -56,7 +56,10 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    let socket_path = util::get_exe_dir()?.join(SOCKET_NAME);
+    let socket_path = match std::env::var("WAYAFKNEXT_SOCKET_PATH") {
+        Ok(p) => std::path::PathBuf::from(p),
+        Err(_) => util::get_exe_dir()?.join(SOCKET_NAME),
+    };
 
     if socket_path.exists() {
         fs::remove_file(&socket_path)?;
